@@ -4,6 +4,32 @@ import axios from "axios";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
+type ApiErrorPayload = {
+  detail?: unknown;
+};
+
+function detailToMessage(detail: unknown): string | null {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((entry) => {
+        if (typeof entry === "string") return entry;
+        if (entry && typeof entry === "object" && "msg" in entry && typeof entry.msg === "string") return entry.msg;
+        return null;
+      })
+      .filter(Boolean);
+    return messages.length ? messages.join(", ") : null;
+  }
+  return null;
+}
+
+export function apiErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError<ApiErrorPayload>(error)) {
+    return detailToMessage(error.response?.data?.detail) ?? fallback;
+  }
+  return fallback;
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000

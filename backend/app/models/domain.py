@@ -90,6 +90,7 @@ class Category(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     default_gst_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("0.00"), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     products: Mapped[list[Product]] = relationship(back_populates="category")
@@ -107,10 +108,14 @@ class Product(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(180), index=True, nullable=False)
     sku: Mapped[str] = mapped_column(String(80), unique=True, index=True, nullable=False)
     barcode: Mapped[str | None] = mapped_column(String(80), unique=True, index=True)
+    brand: Mapped[str | None] = mapped_column(String(80))
+    hsn_code: Mapped[str | None] = mapped_column(String(20))
+    shelf_location: Mapped[str | None] = mapped_column(String(60))
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"))
     selling_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     gst_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    min_margin_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("12.00"), nullable=False)
     unit: Mapped[str] = mapped_column(String(20), default="pcs", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
@@ -131,6 +136,7 @@ class InventoryItem(TimestampMixin, Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), unique=True, nullable=False)
     on_hand: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=Decimal("0.000"), nullable=False)
     reorder_level: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=Decimal("5.000"), nullable=False)
+    safety_stock: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=Decimal("0.000"), nullable=False)
 
     product: Mapped[Product] = relationship(back_populates="inventory")
 
@@ -146,8 +152,10 @@ class InventoryBatch(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True, nullable=False)
     batch_number: Mapped[str] = mapped_column(String(120), nullable=False)
+    supplier_batch_code: Mapped[str | None] = mapped_column(String(120))
     expiry_date: Mapped[date | None] = mapped_column(Date)
     cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    mrp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     received_quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     quantity_on_hand: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
 
@@ -184,7 +192,9 @@ class Customer(TimestampMixin, Base):
     phone: Mapped[str | None] = mapped_column(String(40), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(255))
     address: Mapped[str | None] = mapped_column(Text)
+    loyalty_tier: Mapped[str] = mapped_column(String(30), default="REGULAR", nullable=False)
     loyalty_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    credit_limit: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     sales: Mapped[list[Sale]] = relationship(back_populates="customer")
@@ -218,6 +228,8 @@ class Sale(TimestampMixin, Base):
     customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id", ondelete="SET NULL"))
     shift_id: Mapped[int | None] = mapped_column(ForeignKey("cashier_shifts.id", ondelete="SET NULL"))
     status: Mapped[SaleStatus] = mapped_column(Enum(SaleStatus, native_enum=False, length=30), default=SaleStatus.COMPLETED, nullable=False)
+    channel: Mapped[str] = mapped_column(String(30), default="POS", nullable=False)
+    payment_status: Mapped[str] = mapped_column(String(30), default="PAID", nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     discount_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     taxable_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -325,6 +337,8 @@ class Supplier(TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(255))
     gstin: Mapped[str | None] = mapped_column(String(30))
     address: Mapped[str | None] = mapped_column(Text)
+    payment_terms: Mapped[str | None] = mapped_column(String(80))
+    credit_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     purchase_orders: Mapped[list[PurchaseOrder]] = relationship(back_populates="supplier")
@@ -342,6 +356,7 @@ class PurchaseOrder(TimestampMixin, Base):
         nullable=False,
     )
     expected_date: Mapped[date | None] = mapped_column(Date)
+    payment_status: Mapped[str] = mapped_column(String(30), default="UNPAID", nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     tax_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     grand_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

@@ -13,6 +13,7 @@ export interface Category {
   id: number;
   name: string;
   default_gst_rate: string;
+  description: string | null;
   is_active: boolean;
 }
 
@@ -21,15 +22,20 @@ export interface Product {
   name: string;
   sku: string;
   barcode: string | null;
+  brand: string | null;
+  hsn_code: string | null;
+  shelf_location: string | null;
   category_id: number | null;
   category_name?: string | null;
   selling_price: string;
   cost_price: string;
   gst_rate: string;
+  min_margin_percent: string;
   unit: string;
   is_active: boolean;
   on_hand: string;
   reorder_level: string;
+  safety_stock: string;
 }
 
 export interface Customer {
@@ -38,7 +44,9 @@ export interface Customer {
   phone: string | null;
   email: string | null;
   address: string | null;
+  loyalty_tier: string;
   loyalty_points: number;
+  credit_limit: string;
   is_active: boolean;
 }
 
@@ -50,6 +58,8 @@ export interface Supplier {
   email: string | null;
   gstin: string | null;
   address: string | null;
+  payment_terms: string | null;
+  credit_days: number;
   is_active: boolean;
 }
 
@@ -57,8 +67,10 @@ export interface InventoryBatch {
   id: number;
   product_id: number;
   batch_number: string;
+  supplier_batch_code: string | null;
   expiry_date: string | null;
   cost_price: string;
+  mrp: string | null;
   received_quantity: string;
   quantity_on_hand: string;
 }
@@ -68,8 +80,11 @@ export interface InventoryRow {
   product_name: string;
   sku: string;
   barcode: string | null;
+  brand: string | null;
+  shelf_location: string | null;
   on_hand: string;
   reorder_level: string;
+  safety_stock: string;
   is_low_stock: boolean;
   batches: InventoryBatch[];
 }
@@ -97,6 +112,8 @@ export interface Sale {
   customer_id: number | null;
   shift_id: number | null;
   status: string;
+  channel: string;
+  payment_status: string;
   subtotal: string;
   discount_total: string;
   taxable_total: string;
@@ -114,6 +131,8 @@ export interface SaleListRow {
   id: number;
   invoice_number: string;
   status: string;
+  channel: string;
+  payment_status: string;
   cashier_name: string;
   customer_name: string | null;
   grand_total: string;
@@ -139,6 +158,7 @@ export interface PurchaseOrder {
   supplier_name?: string;
   supplier_id?: number;
   status: string;
+  payment_status: string;
   grand_total: string;
   expected_date: string | null;
   created_at: string;

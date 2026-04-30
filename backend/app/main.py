@@ -8,7 +8,7 @@ from app.routes import auth, categories, customers, inventory, products, purchas
 
 configure_logging()
 
-app = FastAPI(title=settings.app_name, version="1.0.0")
+app = FastAPI(title=settings.app_name, version="1.2.0")
 
 app.add_middleware(
     CORSMiddleware,

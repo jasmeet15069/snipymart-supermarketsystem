@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button, EmptyState, Panel, Select, TextInput } from "@/components/ui";
-import { api } from "@/lib/api";
+import { api, apiErrorMessage } from "@/lib/api";
 import type { Role, User } from "@/lib/types";
 
 export default function UsersPage() {
@@ -19,7 +19,7 @@ export default function UsersPage() {
       setForm({ full_name: "", email: "", password: "", role: "CASHIER" });
       void queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (error: any) => toast.error(error.response?.data?.detail ?? "Unable to save user")
+    onError: (error) => toast.error(apiErrorMessage(error, "Unable to save user"))
   });
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -45,7 +45,7 @@ export default function UsersPage() {
           {users.isLoading ? (
             <EmptyState text="Loading users" />
           ) : users.isError ? (
-            <EmptyState text={(users.error as any)?.response?.data?.detail ?? "Unable to load users"} />
+            <EmptyState text={apiErrorMessage(users.error, "Unable to load users")} />
           ) : (users.data ?? []).length === 0 ? <EmptyState text="No users" /> : (
             <table className="w-full text-sm">
               <thead className="border-b border-line text-left text-xs uppercase tracking-normal text-gray-500"><tr><th className="py-2">Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>

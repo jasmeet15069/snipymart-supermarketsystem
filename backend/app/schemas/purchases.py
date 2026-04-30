@@ -43,6 +43,7 @@ class PurchaseOrderRead(ORMModel):
     po_number: str
     supplier_id: int
     status: PurchaseOrderStatus
+    payment_status: str
     expected_date: date | None
     subtotal: Decimal
     tax_total: Decimal
@@ -57,6 +58,7 @@ class PurchaseOrderListRow(ORMModel):
     po_number: str
     supplier_name: str
     status: PurchaseOrderStatus
+    payment_status: str
     grand_total: Decimal
     expected_date: date | None
     created_at: datetime

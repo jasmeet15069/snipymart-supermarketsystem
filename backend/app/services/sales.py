@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.errors import BusinessError
 from app.models.domain import (
     CashierShift,
+    Customer,
     InventoryBatch,
     InventoryItem,
     LoyaltyLedger,
@@ -27,6 +28,16 @@ from app.models.domain import (
 from app.schemas.sales import SaleCreate, SaleReturnCreate
 from app.services.decimal_utils import money, qty, split_inclusive_tax
 from app.services.numbering import make_number
+
+
+def loyalty_tier_for(points: int) -> str:
+    if points >= 1000:
+        return "PLATINUM"
+    if points >= 500:
+        return "GOLD"
+    if points >= 100:
+        return "SILVER"
+    return "REGULAR"
 
 
 def _load_sale(db: Session, sale_id: int) -> Sale:
@@ -200,7 +211,10 @@ def create_sale(db: Session, payload: SaleCreate, current_user: User) -> Sale:
 
         if payload.customer_id:
             points = int(grand_total // Decimal("100"))
-            if points:
+            customer = db.get(Customer, payload.customer_id)
+            if customer and points:
+                customer.loyalty_points += points
+                customer.loyalty_tier = loyalty_tier_for(customer.loyalty_points)
                 db.add(
                     LoyaltyLedger(
                         customer_id=payload.customer_id,
@@ -300,6 +314,20 @@ def create_return(db: Session, sale_id: int, payload: SaleReturnCreate, current_
             )
 
         return_record.refund_amount = money(refund_total)
+        if sale.customer_id:
+            reversed_points = int(refund_total // Decimal("100"))
+            customer = db.get(Customer, sale.customer_id)
+            if customer and reversed_points:
+                customer.loyalty_points = max(0, customer.loyalty_points - reversed_points)
+                customer.loyalty_tier = loyalty_tier_for(customer.loyalty_points)
+                db.add(
+                    LoyaltyLedger(
+                        customer_id=sale.customer_id,
+                        sale_id=sale.id,
+                        points=-reversed_points,
+                        description=f"Reversed on return for {sale.invoice_number}",
+                    )
+                )
         all_returned = all(item.returned_quantity >= item.quantity for item in sale.items)
         any_returned = any(item.returned_quantity > 0 for item in sale.items)
         sale.status = SaleStatus.RETURNED if all_returned else SaleStatus.PARTIALLY_RETURNED if any_returned else SaleStatus.COMPLETED

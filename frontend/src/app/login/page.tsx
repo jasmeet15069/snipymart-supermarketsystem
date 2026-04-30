@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LockKeyhole, Store } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/providers";
+import { apiErrorMessage } from "@/lib/api";
 import { Button, TextInput } from "@/components/ui";
 
 export default function LoginPage() {
@@ -20,8 +21,8 @@ export default function LoginPage() {
     try {
       await login(email, password);
       router.replace("/pos");
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail ?? "Unable to sign in");
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "Unable to sign in"));
     } finally {
       setBusy(false);
     }

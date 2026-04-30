@@ -5,7 +5,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Banknote,
+  Camera,
   CreditCard,
+  Keyboard,
   Minus,
   Package,
   PauseCircle,
@@ -14,6 +16,7 @@ import {
   QrCode,
   ReceiptText,
   RotateCcw,
+  ScanBarcode,
   Search,
   ShieldCheck,
   ShoppingCart,
@@ -24,7 +27,7 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button, EmptyState, Panel, Select, TextInput } from "@/components/ui";
-import { api } from "@/lib/api";
+import { api, apiErrorMessage } from "@/lib/api";
 import { classNames, dateTime, money, numberValue } from "@/lib/format";
 import type { Customer, PaymentMode, Product, Sale, Shift } from "@/lib/types";
 
@@ -40,6 +43,16 @@ interface HeldBill {
   customerId: string;
   lines: CartLine[];
 }
+
+interface BarcodeResult {
+  rawValue: string;
+}
+
+interface BarcodeDetectorInstance {
+  detect(source: CanvasImageSource): Promise<BarcodeResult[]>;
+}
+
+type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
 
 const paymentModes: Array<{ mode: PaymentMode; label: string; icon: typeof Banknote }> = [
   { mode: "CASH", label: "Cash", icon: Banknote },
@@ -65,6 +78,11 @@ function loadHeldBills(): HeldBill[] {
 export default function POSPage() {
   const queryClient = useQueryClient();
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scannerStreamRef = useRef<MediaStream | null>(null);
+  const scannerLoopRef = useRef<number | null>(null);
+  const lastScanRef = useRef<{ code: string; at: number } | null>(null);
+  const handleScannedBarcodeRef = useRef<(code: string) => Promise<void>>(async () => undefined);
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerId, setCustomerId] = useState("");
@@ -75,6 +93,12 @@ export default function POSPage() {
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [heldBills, setHeldBills] = useState<HeldBill[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerStatus, setScannerStatus] = useState("Ready to scan");
+  const [scannerAutoAdd, setScannerAutoAdd] = useState(true);
+  const [scannerProduct, setScannerProduct] = useState<Product | null>(null);
+  const [scannedCode, setScannedCode] = useState("");
+  const [manualBarcode, setManualBarcode] = useState("");
 
   const customers = useQuery({
     queryKey: ["customers"],
@@ -96,9 +120,11 @@ export default function POSPage() {
 
   useEffect(() => {
     searchRef.current?.focus();
-    const savedCart = window.localStorage.getItem("snipymart_cart");
-    if (savedCart) setCart(JSON.parse(savedCart));
-    setHeldBills(loadHeldBills());
+    queueMicrotask(() => {
+      const savedCart = window.localStorage.getItem("snipymart_cart");
+      if (savedCart) setCart(JSON.parse(savedCart));
+      setHeldBills(loadHeldBills());
+    });
   }, []);
 
   useEffect(() => {
@@ -108,6 +134,71 @@ export default function POSPage() {
   useEffect(() => {
     window.localStorage.setItem("snipymart_held_bills", JSON.stringify(heldBills));
   }, [heldBills]);
+
+  useEffect(() => {
+    if (!scannerOpen) {
+      stopScanner();
+      return;
+    }
+
+    let cancelled = false;
+    async function startScanner() {
+      setScannerStatus("Starting camera...");
+      setScannerProduct(null);
+      setScannedCode("");
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        scannerStreamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        const Detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
+        if (!Detector) {
+          setScannerStatus("Camera is open. Native barcode detection is unavailable here; use manual barcode entry or a USB scanner.");
+          return;
+        }
+        const detector = new Detector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"] });
+        setScannerStatus("Point the camera at a barcode");
+        const scan = async () => {
+          if (!videoRef.current || cancelled) return;
+          try {
+            if (videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+              const codes = await detector.detect(videoRef.current);
+              const code = codes[0]?.rawValue?.trim();
+              if (code) {
+                const last = lastScanRef.current;
+                const now = Date.now();
+                if (!last || last.code !== code || now - last.at > 2200) {
+                  lastScanRef.current = { code, at: now };
+                  await handleScannedBarcodeRef.current(code);
+                }
+              }
+            }
+          } catch {
+            setScannerStatus("Scanner is active. Keep the barcode inside the frame.");
+          }
+          scannerLoopRef.current = window.setTimeout(scan, 450);
+        };
+        void scan();
+      } catch {
+        setScannerStatus("Camera access failed. Use manual barcode entry or allow camera permission.");
+      }
+    }
+
+    void startScanner();
+    return () => {
+      cancelled = true;
+      stopScanner();
+    };
+  }, [scannerOpen]);
 
   const categories = useMemo(() => {
     const names = new Set((products.data ?? []).map((product) => product.category_name ?? "Uncategorised"));
@@ -147,7 +238,7 @@ export default function POSPage() {
   const cashNeedsShift = paymentMode === "CASH" && !shift.data;
 
   useEffect(() => {
-    setAmountTendered(totals.total ? totals.total.toFixed(2) : "");
+    queueMicrotask(() => setAmountTendered(totals.total ? totals.total.toFixed(2) : ""));
   }, [totals.total]);
 
   function setQuantity(productId: number, nextQuantity: number) {
@@ -169,6 +260,62 @@ export default function POSPage() {
       })
     );
   }
+
+  function stopScanner() {
+    if (scannerLoopRef.current) {
+      window.clearTimeout(scannerLoopRef.current);
+      scannerLoopRef.current = null;
+    }
+    if (scannerStreamRef.current) {
+      scannerStreamRef.current.getTracks().forEach((track) => track.stop());
+      scannerStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }
+
+  async function findProductByBarcode(code: string) {
+    const local = (products.data ?? []).find((product) => product.barcode === code || product.sku === code);
+    if (local) return local;
+    const response = await api.get<Product[]>("/products/lookup", { params: { query: code } });
+    return response.data.find((product) => product.barcode === code || product.sku === code) ?? response.data[0] ?? null;
+  }
+
+  async function handleScannedBarcode(code: string) {
+    setScannedCode(code);
+    setScannerStatus(`Scanned ${code}. Looking up product...`);
+    try {
+      const product = await findProductByBarcode(code);
+      if (!product) {
+        setScannerProduct(null);
+        setScannerStatus(`No product found for ${code}`);
+        toast.error(`No product found for ${code}`);
+        return;
+      }
+      setScannerProduct(product);
+      setScannerStatus(`${product.name} found`);
+      if (scannerAutoAdd) {
+        addProduct(product);
+        toast.success(`${product.name} added from barcode`);
+      }
+    } catch {
+      setScannerProduct(null);
+      setScannerStatus("Barcode lookup failed. Check the API connection and try again.");
+    }
+  }
+
+  async function submitManualBarcode(event: FormEvent) {
+    event.preventDefault();
+    const code = manualBarcode.trim();
+    if (!code) return;
+    await handleScannedBarcode(code);
+    setManualBarcode("");
+  }
+
+  useEffect(() => {
+    handleScannedBarcodeRef.current = handleScannedBarcode;
+  });
 
   function addProduct(product: Product) {
     const stock = numberValue(product.on_hand);
@@ -245,7 +392,7 @@ export default function POSPage() {
       void queryClient.invalidateQueries({ queryKey: ["inventory"] });
       void queryClient.invalidateQueries({ queryKey: ["current-shift"] });
     },
-    onError: (error: any) => toast.error(error.response?.data?.detail ?? "Sale failed")
+    onError: (error) => toast.error(apiErrorMessage(error, "Sale failed"))
   });
 
   const openShift = useMutation({
@@ -255,7 +402,7 @@ export default function POSPage() {
       setOpeningCash("0");
       void shift.refetch();
     },
-    onError: (error: any) => toast.error(error.response?.data?.detail ?? "Unable to open shift")
+    onError: (error) => toast.error(apiErrorMessage(error, "Unable to open shift"))
   });
 
   const closeShift = useMutation({
@@ -268,7 +415,7 @@ export default function POSPage() {
       setClosingCash("");
       void shift.refetch();
     },
-    onError: (error: any) => toast.error(error.response?.data?.detail ?? "Unable to close shift")
+    onError: (error) => toast.error(apiErrorMessage(error, "Unable to close shift"))
   });
 
   const checkoutBlocked = !cart.length || checkout.isPending || balanceDue > 0 || cashNeedsShift;
@@ -297,10 +444,14 @@ export default function POSPage() {
                     className="h-12 pl-10 text-base"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2 lg:w-[260px]">
+                <div className="grid grid-cols-3 gap-2 lg:w-[390px]">
                   <Button type="submit" className="h-12">
                     <Plus size={18} />
                     Add
+                  </Button>
+                  <Button type="button" variant="secondary" className="h-12" onClick={() => setScannerOpen((value) => !value)}>
+                    <ScanBarcode size={18} />
+                    Scanner
                   </Button>
                   <Button type="button" variant="secondary" className="h-12" onClick={() => setQuery("")}>
                     <X size={18} />
@@ -308,6 +459,69 @@ export default function POSPage() {
                   </Button>
                 </div>
               </form>
+
+              {scannerOpen && (
+                <div className="mt-4 grid gap-4 rounded border border-line bg-gray-50 p-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+                  <div className="relative overflow-hidden rounded bg-black">
+                    <video ref={videoRef} className="aspect-video w-full object-cover" muted playsInline />
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <div className="h-28 w-72 max-w-[80%] rounded border-2 border-mint shadow-[0_0_0_999px_rgba(0,0,0,0.35)]" />
+                    </div>
+                    <div className="absolute left-3 top-3 rounded bg-black/70 px-3 py-1 text-xs font-medium text-white">
+                      {scannerStatus}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 font-semibold"><Camera size={18} /> Barcode scanner</div>
+                        <p className="text-xs text-gray-500">Camera scanning works on localhost or HTTPS. USB barcode scanners can type into the search field.</p>
+                      </div>
+                      <Button type="button" variant="secondary" onClick={() => setScannerOpen(false)}>
+                        <X size={16} />
+                        Close
+                      </Button>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={scannerAutoAdd} onChange={(event) => setScannerAutoAdd(event.target.checked)} />
+                      Auto-add matched product to cart
+                    </label>
+                    <form onSubmit={submitManualBarcode} className="grid grid-cols-[1fr_auto] gap-2">
+                      <TextInput value={manualBarcode} onChange={(event) => setManualBarcode(event.target.value)} placeholder="Enter barcode manually" />
+                      <Button type="submit" variant="secondary">
+                        <Keyboard size={16} />
+                        Lookup
+                      </Button>
+                    </form>
+                    {scannedCode && (
+                      <div className="rounded border border-line bg-white p-3 text-sm">
+                        <div className="text-xs font-semibold uppercase tracking-normal text-gray-500">Last barcode</div>
+                        <div className="font-mono text-base">{scannedCode}</div>
+                      </div>
+                    )}
+                    {scannerProduct && (
+                      <div className="rounded border border-line bg-white p-3 text-sm">
+                        <div className="mb-2 flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-semibold">{scannerProduct.name}</div>
+                            <div className="text-xs text-gray-500">{scannerProduct.sku} - {scannerProduct.brand ?? scannerProduct.category_name ?? "Uncategorised"}</div>
+                          </div>
+                          <span className="font-semibold">{money(scannerProduct.selling_price)}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="rounded bg-gray-50 p-2"><span className="block text-gray-500">Stock</span>{scannerProduct.on_hand}</div>
+                          <div className="rounded bg-gray-50 p-2"><span className="block text-gray-500">GST</span>{scannerProduct.gst_rate}%</div>
+                          <div className="rounded bg-gray-50 p-2"><span className="block text-gray-500">Shelf</span>{scannerProduct.shelf_location ?? "-"}</div>
+                        </div>
+                        <Button type="button" className="mt-3 w-full" onClick={() => addProduct(scannerProduct)}>
+                          <Plus size={16} />
+                          Add product
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
                 {categories.map((category) => (
@@ -335,7 +549,7 @@ export default function POSPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="line-clamp-2 font-semibold">{product.name}</div>
-                        <div className="mt-1 text-xs text-gray-500">{product.barcode ?? product.sku}</div>
+                        <div className="mt-1 text-xs text-gray-500">{product.brand ? `${product.brand} - ${product.barcode ?? product.sku}` : product.barcode ?? product.sku}</div>
                       </div>
                       <Package size={18} className="shrink-0 text-cyan" />
                     </div>

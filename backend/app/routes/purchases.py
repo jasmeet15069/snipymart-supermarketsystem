@@ -36,6 +36,7 @@ def list_purchase_orders(db: Session = Depends(get_db)) -> list[PurchaseOrderLis
             po_number=po.po_number,
             supplier_name=supplier_name,
             status=po.status,
+            payment_status=po.payment_status,
             grand_total=po.grand_total,
             expected_date=po.expected_date,
             created_at=po.created_at,

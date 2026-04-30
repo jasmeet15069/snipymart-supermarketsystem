@@ -30,6 +30,8 @@ def list_sales(_: User = Depends(get_current_user), db: Session = Depends(get_db
             id=sale.id,
             invoice_number=sale.invoice_number,
             status=sale.status,
+            channel=sale.channel,
+            payment_status=sale.payment_status,
             cashier_name=cashier_name,
             customer_name=customer_name,
             grand_total=sale.grand_total,

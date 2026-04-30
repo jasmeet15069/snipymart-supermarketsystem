@@ -73,6 +73,8 @@ class SaleRead(ORMModel):
     customer_id: int | None
     shift_id: int | None
     status: SaleStatus
+    channel: str
+    payment_status: str
     subtotal: Decimal
     discount_total: Decimal
     taxable_total: Decimal
@@ -90,6 +92,8 @@ class SaleListRow(ORMModel):
     id: int
     invoice_number: str
     status: SaleStatus
+    channel: str
+    payment_status: str
     cashier_name: str
     customer_name: str | None
     grand_total: Decimal

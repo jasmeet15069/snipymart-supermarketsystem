@@ -24,14 +24,19 @@ def product_to_read(product: Product) -> ProductRead:
         name=product.name,
         sku=product.sku,
         barcode=product.barcode,
+        brand=product.brand,
+        hsn_code=product.hsn_code,
+        shelf_location=product.shelf_location,
         category_id=product.category_id,
         selling_price=product.selling_price,
         cost_price=product.cost_price,
         gst_rate=product.gst_rate,
+        min_margin_percent=product.min_margin_percent,
         unit=product.unit,
         is_active=product.is_active,
         on_hand=inventory.on_hand if inventory else Decimal("0.000"),
         reorder_level=inventory.reorder_level if inventory else Decimal("0.000"),
+        safety_stock=inventory.safety_stock if inventory else Decimal("0.000"),
         category_name=product.category.name if product.category else None,
         created_at=product.created_at,
         updated_at=product.updated_at,
@@ -43,14 +48,18 @@ def create_product(db: Session, payload: ProductCreate, current_user: User) -> P
         name=payload.name,
         sku=payload.sku,
         barcode=payload.barcode,
+        brand=payload.brand,
+        hsn_code=payload.hsn_code,
+        shelf_location=payload.shelf_location,
         category_id=payload.category_id,
         selling_price=payload.selling_price,
         cost_price=payload.cost_price,
         gst_rate=payload.gst_rate,
+        min_margin_percent=payload.min_margin_percent,
         unit=payload.unit,
         is_active=payload.is_active,
     )
-    inventory = InventoryItem(on_hand=qty(payload.opening_quantity), reorder_level=qty(payload.reorder_level))
+    inventory = InventoryItem(on_hand=qty(payload.opening_quantity), reorder_level=qty(payload.reorder_level), safety_stock=qty(payload.safety_stock))
     product.inventory = inventory
     db.add(product)
     db.flush()
@@ -60,6 +69,7 @@ def create_product(db: Session, payload: ProductCreate, current_user: User) -> P
             batch_number=payload.opening_batch_number or "OPENING",
             expiry_date=payload.opening_expiry_date,
             cost_price=payload.cost_price,
+            mrp=payload.selling_price,
             received_quantity=qty(payload.opening_quantity),
             quantity_on_hand=qty(payload.opening_quantity),
         )
@@ -86,13 +96,21 @@ def create_product(db: Session, payload: ProductCreate, current_user: User) -> P
 def update_product(db: Session, product: Product, payload: ProductUpdate) -> Product:
     data = payload.model_dump(exclude_unset=True)
     reorder_level = data.pop("reorder_level", None)
+    safety_stock = data.pop("safety_stock", None)
     for key, value in data.items():
         setattr(product, key, value)
-    if reorder_level is not None:
+    if reorder_level is not None or safety_stock is not None:
         if not product.inventory:
-            product.inventory = InventoryItem(on_hand=Decimal("0.000"), reorder_level=qty(reorder_level))
+            product.inventory = InventoryItem(
+                on_hand=Decimal("0.000"),
+                reorder_level=qty(reorder_level or Decimal("5.000")),
+                safety_stock=qty(safety_stock or Decimal("0.000")),
+            )
         else:
-            product.inventory.reorder_level = qty(reorder_level)
+            if reorder_level is not None:
+                product.inventory.reorder_level = qty(reorder_level)
+            if safety_stock is not None:
+                product.inventory.safety_stock = qty(safety_stock)
     db.commit()
     db.refresh(product)
     return product
@@ -105,7 +123,14 @@ def find_product_for_pos(db: Session, query: str) -> list[Product]:
             select(Product)
             .where(
                 Product.is_active.is_(True),
-                or_(Product.name.ilike(term), Product.sku.ilike(term), Product.barcode == query.strip()),
+                or_(
+                    Product.name.ilike(term),
+                    Product.sku.ilike(term),
+                    Product.barcode == query.strip(),
+                    Product.brand.ilike(term),
+                    Product.hsn_code == query.strip(),
+                    Product.shelf_location.ilike(term),
+                ),
             )
             .limit(20)
         )

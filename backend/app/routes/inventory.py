@@ -30,8 +30,11 @@ def _inventory_rows(db: Session, low_only: bool = False) -> list[InventoryRow]:
                 product_name=product.name,
                 sku=product.sku,
                 barcode=product.barcode,
+                brand=product.brand,
+                shelf_location=product.shelf_location,
                 on_hand=product.inventory.on_hand,
                 reorder_level=product.inventory.reorder_level,
+                safety_stock=product.inventory.safety_stock,
                 is_low_stock=is_low,
                 batches=[
                     InventoryBatchRead.model_validate(batch)

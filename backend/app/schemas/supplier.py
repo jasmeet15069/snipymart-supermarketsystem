@@ -12,6 +12,8 @@ class SupplierBase(BaseModel):
     email: EmailStr | None = None
     gstin: str | None = Field(default=None, max_length=30)
     address: str | None = None
+    payment_terms: str | None = Field(default=None, max_length=80)
+    credit_days: int = Field(default=0, ge=0, le=180)
     is_active: bool = True
 
 
@@ -26,6 +28,8 @@ class SupplierUpdate(BaseModel):
     email: EmailStr | None = None
     gstin: str | None = Field(default=None, max_length=30)
     address: str | None = None
+    payment_terms: str | None = Field(default=None, max_length=80)
+    credit_days: int | None = Field(default=None, ge=0, le=180)
     is_active: bool | None = None
 
 
