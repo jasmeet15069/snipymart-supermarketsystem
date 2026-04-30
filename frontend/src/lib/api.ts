@@ -43,7 +43,7 @@ function detailToMessage(detail: unknown): string | null {
 
 export function apiErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError<ApiErrorPayload>(error)) {
-    return detailToMessage(error.response?.data?.detail) ?? fallback;
+    return detailToMessage(error.response?.data?.detail) ?? error.response?.statusText ?? error.message ?? fallback;
   }
   return fallback;
 }

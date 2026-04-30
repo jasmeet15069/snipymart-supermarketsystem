@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LockKeyhole, Store } from "lucide-react";
+import { LockKeyhole, Store, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/providers";
 import { apiErrorMessage } from "@/lib/api";
@@ -15,17 +15,31 @@ export default function LoginPage() {
   const [password, setPassword] = useState("Admin@12345");
   const [busy, setBusy] = useState(false);
 
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function signIn(nextEmail = email, nextPassword = password) {
     setBusy(true);
     try {
-      await login(email, password);
+      await login(nextEmail.trim(), nextPassword);
       router.replace("/pos");
     } catch (error) {
       toast.error(apiErrorMessage(error, "Unable to sign in"));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    await signIn();
+  }
+
+  async function demoLogin(role: "admin" | "cashier") {
+    const credentials =
+      role === "admin"
+        ? { email: "admin@snipymart.in", password: "Admin@12345" }
+        : { email: "cashier@snipymart.in", password: "Cashier@12345" };
+    setEmail(credentials.email);
+    setPassword(credentials.password);
+    await signIn(credentials.email, credentials.password);
   }
 
   return (
@@ -53,6 +67,16 @@ export default function LoginPage() {
             <LockKeyhole size={16} />
             {busy ? "Signing in" : "Sign in"}
           </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => void demoLogin("admin")}>
+              <UserRound size={15} />
+              Admin
+            </Button>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => void demoLogin("cashier")}>
+              <UserRound size={15} />
+              Cashier
+            </Button>
+          </div>
         </div>
       </form>
     </main>
