@@ -2,9 +2,25 @@
 
 import axios from "axios";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  (process.env.NODE_ENV === "production" ? "/_/backend/api/v1" : "http://localhost:8000/api/v1");
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+function resolveApiBaseUrl() {
+  if (typeof window !== "undefined") {
+    const isLocalFrontend = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+    const isLocalApi =
+      !configuredApiBaseUrl ||
+      configuredApiBaseUrl.includes("localhost:8000") ||
+      configuredApiBaseUrl.includes("127.0.0.1:8000");
+
+    if (isLocalFrontend && isLocalApi) {
+      return "http://127.0.0.1:8000/api/v1";
+    }
+  }
+
+  return configuredApiBaseUrl ?? (process.env.NODE_ENV === "production" ? "/_/backend/api/v1" : "http://127.0.0.1:8000/api/v1");
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 type ApiErrorPayload = {
   detail?: unknown;
