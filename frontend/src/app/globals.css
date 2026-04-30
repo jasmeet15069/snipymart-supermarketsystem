@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  background: #f6f8fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: #1f2933;
+  background: #f6f8fb;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .receipt-print {
+    display: block !important;
+    width: 80mm;
+    margin: 0;
+    padding: 3mm;
+    color: #000;
+    background: #fff;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .receipt-print table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .receipt-print td,
+  .receipt-print th {
+    padding: 2px 0;
+  }
+}

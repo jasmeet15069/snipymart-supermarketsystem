@@ -1,0 +1,1 @@
+"""SnipyMart ERP backend package."""

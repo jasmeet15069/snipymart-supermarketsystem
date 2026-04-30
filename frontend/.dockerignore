@@ -1,0 +1,6 @@
+.env.local
+.next
+node_modules
+npm-debug.log
+frontend.log
+frontend.err.log

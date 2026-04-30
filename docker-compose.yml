@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  mysql-local:
+    image: mysql:8.4
+    profiles: ["local-db"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: erpsystem
+      MYSQL_USER: erp
+      MYSQL_PASSWORD: erp
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-local-data:/var/lib/mysql
+
+volumes:
+  mysql-local-data:
