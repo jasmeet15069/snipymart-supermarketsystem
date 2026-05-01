@@ -1,4 +1,4 @@
-# SnipyMart Supermarket ERP + POS Final PRD
+# SnipyMart Supermarket ERP + POS Final Closed-Scope PRD
 
 ## 1. Product Overview
 
@@ -8,7 +8,7 @@ The system is built as a full-stack monorepo:
 
 `C:\Users\ACXIOM\Desktop\Acxiom Files\Azure AI Foundry\erpsystem`
 
-Current release: **V1.2**
+Final release scope: **V1.2 Closed Scope**
 
 Primary deployments:
 
@@ -22,7 +22,24 @@ Primary deployments:
 
 SnipyMart should feel like practical supermarket software, not a demo CRUD app. A cashier should be able to bill products quickly, an owner should understand sales and stock health, and an admin should be able to maintain products, suppliers, users, and inventory without touching the database.
 
-The long-term vision is to become a complete supermarket operating system covering POS, inventory, purchasing, customer loyalty, accounting integrations, barcode/label workflows, and multi-branch operations.
+The final product vision is a complete single-store supermarket ERP + POS covering POS billing, inventory, purchases, customers, users, barcode lookup, GST-aware sales, returns, and business reporting. No additional feature modules are planned beyond this closed scope unless a critical operational, security, compliance, or data-integrity need appears.
+
+## 2.1 Closed Scope Statement
+
+This PRD defines the final approved product scope for SnipyMart.
+
+After this PRD, work should be limited to:
+
+- Bug fixes.
+- Security fixes.
+- Deployment reliability fixes.
+- Data integrity fixes.
+- Performance fixes.
+- Documentation corrections.
+- Minor UI clarity fixes that do not introduce new business modules.
+- Mandatory changes caused by hosting, database, browser, framework, or compliance requirements.
+
+Work should not add new product modules or major new workflows unless explicitly re-approved as a necessary change.
 
 ## 3. Goals
 
@@ -33,7 +50,7 @@ The long-term vision is to become a complete supermarket operating system coveri
 - Track every sale, purchase, return, and stock movement.
 - Give owners clear visibility into revenue, low stock, and top products.
 - Support realistic GST-inclusive pricing workflows.
-- Provide a deployable, maintainable foundation for future supermarket features.
+- Provide a deployable, maintainable final system for single-store supermarket operations.
 
 ### Product Goals
 
@@ -53,7 +70,7 @@ The long-term vision is to become a complete supermarket operating system coveri
 - Keep secrets out of Git.
 - Use migrations for schema changes.
 - Keep business logic out of UI components.
-- Make future multi-store and reporting expansion possible.
+- Keep the system maintainable without requiring further feature expansion.
 
 ## 4. Target Users
 
@@ -113,7 +130,7 @@ Primary needs:
 
 ## 5. Scope
 
-### In Scope for V1.2
+### Final In Scope
 
 - Single supermarket location.
 - Product and category management.
@@ -137,7 +154,7 @@ Primary needs:
 - Seeded business data.
 - Vercel and VPS deployments.
 
-### Out of Scope for V1.2
+### Permanently Out of Scope Unless Re-Approved as Necessary
 
 - Multi-branch inventory.
 - Accounting ledger integration.
@@ -174,11 +191,9 @@ The following has been implemented and verified:
 - `PRD.md`.
 - `docs/barcode-sources.md`.
 
-### Latest Verified Commit
+### Documentation Status
 
-`29b62d0 Add product requirements document`
-
-Note: Additional final PRD work is represented by this document.
+This document is the final closed-scope PRD. Any later changes should be treated as amendments, not as planned feature roadmap items.
 
 ## 7. Functional Requirements
 
@@ -558,40 +573,30 @@ Released:
 - Verified product barcode seed data.
 - PRD documentation.
 
-## 11. Roadmap
+## 11. Maintenance Policy
 
-### V1.3 Recommended
+There is no planned feature roadmap after this final PRD.
 
-- Barcode label generation.
-- Barcode label printing.
-- Product CSV import/export.
-- Advanced product filters.
-- Better receipt print workflow.
-- More complete frontend tests.
-- Stock adjustment workflow.
-- User audit log.
+Allowed post-final work:
 
-### V1.4 Recommended
+- Fix login, billing, inventory, purchasing, reporting, deployment, or data issues.
+- Fix security vulnerabilities.
+- Fix database migration or seed-data problems.
+- Keep dependencies compatible when required.
+- Improve reliability of already-approved workflows.
+- Improve documentation accuracy.
+- Adjust deployment configuration when hosting providers require it.
 
-- Advanced reporting filters.
-- Date range analytics.
-- Supplier payment tracking.
-- Customer loyalty redemption UI.
-- Purchase returns.
-- Expiry alerts.
-- Margin reports.
+Not allowed without explicit re-approval:
 
-### V2 Recommended
-
-- Multi-store/branch support.
-- Store-wise inventory.
-- Inter-branch transfer.
-- Offline POS mode.
-- Accounting integration.
-- Mobile inventory scanner app.
-- Advanced promotion engine.
-- Role permission matrix.
-- Backup and restore dashboard.
+- Adding multi-store support.
+- Adding offline POS mode.
+- Adding accounting modules.
+- Adding mobile apps.
+- Adding a new promotion engine.
+- Adding new major reports outside the existing reporting module.
+- Adding new hardware workflows beyond existing browser/manual/USB barcode support.
+- Adding new role systems beyond Admin and Cashier.
 
 ## 12. Open Risks
 
@@ -600,23 +605,24 @@ Released:
 - Fresh produce often uses PLU or store-generated labels, not manufacturer EAN.
 - Vercel serverless backend can have cold starts.
 - Direct MySQL from serverless may need connection-pooling strategy at scale.
-- Current reporting is basic and should be expanded for owner-grade analytics.
+- Reporting is intentionally limited to the approved dashboard/reporting scope.
 - Legacy backup table should only be dropped after explicit approval.
 
-## 13. Open Questions
+## 13. Closed Product Decisions
 
-- Should the system support multiple branches in V2?
-- Should cash drawer reconciliation be expanded?
-- Should discounts support coupons/promotions?
-- Should loyalty support redemption during checkout?
-- Should supplier payments be tracked in-app?
-- Should barcode labels be generated as EAN-13, Code128, QR, or all?
-- Should receipts be stored as PDFs?
-- Should the VPS deployment remain primary or should Vercel become primary?
+- Single-store scope is final.
+- Admin and Cashier roles are final.
+- Existing POS discount behavior is final.
+- Existing loyalty earn/ledger behavior is final.
+- Existing supplier and purchase-order workflow is final.
+- Existing barcode/manual/USB/camera scanner support is final.
+- Existing invoice/receipt browser print support is final.
+- Vercel and VPS deployment support are both accepted.
+- Any future change must be classified as necessary maintenance or explicitly approved as a scope amendment.
 
 ## 14. Acceptance Checklist
 
-### Current V1.2 Acceptance
+### Final Feature Acceptance
 
 - [x] Admin can log in.
 - [x] Cashier can log in.
@@ -638,29 +644,24 @@ Released:
 - [x] Seed data is business-realistic.
 - [x] Barcode source documentation exists.
 
-### Final Production Acceptance Before Real Store Use
+### Final Closed-Scope Acceptance
 
-- [ ] Add database backup schedule.
-- [ ] Add monitoring/log alerts.
-- [ ] Add frontend automated tests.
-- [ ] Add full backend workflow tests.
-- [ ] Add barcode label printing.
-- [ ] Add receipt printer validation on real hardware.
-- [ ] Add cashier training flow.
-- [ ] Add production domain and HTTPS for VPS if VPS remains active.
-- [ ] Add data import/export.
-- [ ] Add audit logs.
+- [x] Product scope is closed.
+- [x] No future feature roadmap is included.
+- [x] Post-final work is limited to fixes, maintenance, security, deployment, data integrity, and documentation.
+- [x] Major new modules require explicit re-approval.
 
 ## 15. Final Recommendation
 
-SnipyMart V1.2 is suitable as a functional deployed MVP and internal demo for supermarket ERP + POS workflows.
+SnipyMart V1.2 Closed Scope is the final approved version of the supermarket ERP + POS product.
 
-Before using it in a real store, the next most important work is:
+The product should now be treated as complete for the agreed feature scope. Future work should not add new features unless necessary for:
 
-1. Receipt printer validation.
-2. Barcode label generation/printing.
-3. Backup and monitoring.
-4. More automated tests.
-5. Audit logs and stock adjustment approval.
+- Bug resolution.
+- Security.
+- Deployment stability.
+- Database/data integrity.
+- Compliance.
+- Compatibility with required infrastructure changes.
 
-The existing architecture is ready to continue toward those features without a full rebuild.
+Any requested expansion beyond these categories should be handled as a formal scope amendment, not as continuation of this PRD.
